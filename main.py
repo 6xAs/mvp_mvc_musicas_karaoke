@@ -1,6 +1,19 @@
 import streamlit as st
 
-st.title("Hello, Streamlit!")
-st.write("This is a simple Streamlit app.")
-if st.button("Click me!"):
-    st.write("Button clicked!")
+from views.musicas_karaoke import main as musicas_karaoke_view_main
+
+# Configuração da página
+st.set_page_config(
+        page_title="Karaoke Music Application",
+        page_icon="🎤",
+        layout="wide"
+    )
+
+
+def main():
+    # Exibir dataframe de músicas de karaokê
+    st.title("Karaoke Music Application")
+    musicas_karaoke_view_main()
+    
+if __name__ == "__main__":
+    main()
