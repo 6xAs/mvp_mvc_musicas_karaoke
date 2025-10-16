@@ -3,28 +3,29 @@ import streamlit as st
 
 from controllers.musicaskaraokecontroller import (
     SEARCH_STATE_KEY,
-    clear_search,
-    get_all_musicas,
-    get_filtered_musicas,
-    get_search_query,
-    set_search_query,
+    clear_search_value,
+    ensure_search_state,
+    get_filtered_catalog,
+    get_full_catalog,
+    get_search_value,
 )
 
 
 def main():
+    """Montagem da tela principal da aplicação."""
     _inject_styles()
-    _ensure_session_defaults()
+    ensure_search_state()  # Garante que o campo de busca tenha um valor inicial.
 
-    search_query = _render_search_section()
-    full_df, display_full = get_all_musicas()
-    filtered_df, display_filtered = get_filtered_musicas(search_query, full_df)
+    search_text = _render_search_area()
+    full_df, visible_full = get_full_catalog()
+    filtered_df, visible_filtered = get_filtered_catalog(search_text, full_df)
 
-    _render_summary_metrics(len(display_full), len(display_filtered), search_query)
-    _render_dataframe(display_filtered)
+    _render_summary_metrics(total=len(visible_full), filtered=len(visible_filtered), query=search_text)
+    _render_dataframe(visible_filtered)
 
 
 def _inject_styles() -> None:
-    """Aplica ajustes visuais nas áreas de busca e tabela."""
+    """Insere CSS simples para destacar o campo de busca e os números das músicas."""
     st.markdown(
         """
         <style>
@@ -52,35 +53,34 @@ def _inject_styles() -> None:
         unsafe_allow_html=True,
     )
 
-# Garante que as chaves de sessão necessárias estejam inicializadas
-def _ensure_session_defaults() -> None:
-    if SEARCH_STATE_KEY not in st.session_state:
-        set_search_query("")
 
-
-def _render_search_section() -> str:
+def _render_search_area() -> str:
+    """Exibe o campo de busca e retorna o texto digitado."""
     st.markdown("#### 🔎 Encontre sua música em segundos")
     st.caption("Pesquise por número do catálogo, nome da música, artista ou gênero.")
 
-    with st.container():
-        search_col, clear_col = st.columns([6, 1])
-        with search_col:
-            st.text_input(
-                "Busca no catálogo",
-                key=SEARCH_STATE_KEY,
-                placeholder="Ex.: 01039, Todo Azul do Mar, 14 Bis...",
-                label_visibility="collapsed",
-            )
-        with clear_col:
-            st.button("Limpar", on_click=clear_search, use_container_width=True)
+    search_col, clear_col = st.columns([6, 1])
 
-    return get_search_query()
+    with search_col:
+        # O Streamlit cuida de atualizar st.session_state automaticamente por causa da chave (key).
+        st.text_input(
+            "Busca no catálogo",
+            key=SEARCH_STATE_KEY,
+            placeholder="Ex.: 01039, Todo Azul do Mar, 14 Bis...",
+            label_visibility="collapsed",
+        )
+
+    with clear_col:
+        st.button("Limpar", on_click=clear_search_value, use_container_width=True)
+
+    return get_search_value()
 
 
-def _render_summary_metrics(total_count: int, filtered_count: int, query: str) -> None:
+def _render_summary_metrics(total: int, filtered: int, query: str) -> None:
+    """Mostra indicadores rápidos para o usuário entender o resultado da busca."""
     col1, col2, col3 = st.columns([1, 1, 2])
-    col1.metric("Total no catálogo", f"{total_count:,}".replace(",", "."))
-    col2.metric("Resultados", f"{filtered_count:,}".replace(",", "."))
+    col1.metric("Total no catálogo", f"{total:,}".replace(",", "."))
+    col2.metric("Resultados", f"{filtered:,}".replace(",", "."))
 
     if query:
         col3.success(f"Mostrando resultados para “{query}”.")
@@ -89,24 +89,26 @@ def _render_summary_metrics(total_count: int, filtered_count: int, query: str) -
 
 
 def _render_dataframe(display_df: pd.DataFrame) -> None:
+    """Exibe o catálogo final já filtrado, com destaque para número e nome da música."""
     st.markdown("#### 🎵 Catálogo de músicas")
 
     if display_df.empty:
         st.warning("Nenhuma música corresponde à sua busca. Tente ajustar os termos.")
         return
 
+    # Destaca número e nome para facilitar leitura.
     styled_df = display_df.style.set_properties(
         subset=["numero", "musica"], **{"font-weight": "bold"}
     )
 
-    # Altura adaptativa para a grade, limitando a 20 linhas visíveis
-    visible_rows = min(len(display_df), 20)
-    height = 70 + visible_rows * 33
+    # Controla a altura da tabela para evitar scroll infinito (máx. 20 linhas de cada vez).
+    max_visible_rows = min(len(display_df), 20)
+    table_height = 70 + max_visible_rows * 33
 
     st.dataframe(
         styled_df,
         use_container_width=True,
-        height=height,
+        height=table_height,
         hide_index=True,
         column_config={
             "numero": st.column_config.TextColumn("Número", width="small"),
