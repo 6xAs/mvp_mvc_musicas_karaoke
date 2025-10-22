@@ -1,0 +1,15 @@
+# Ignorar 
+# Arquivos Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+# Arquivos de configuração do ambiente virtual
+venv/
+env/
+.venv/
+.env/
+# Arquivos de log
+*.log
+# Arquivos de banco de dados SQLite
+*.sqlite3
+# Arquivos de cache do Django
